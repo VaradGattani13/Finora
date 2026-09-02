@@ -138,9 +138,9 @@ function BudgetScene({ reduced }: { reduced: boolean }) {
 /* --- Scene 2: a recurring rule writing itself into the month -------------- */
 function RecurringScene() {
   const rows = [
-    { day: '03', name: 'Broadband', amt: 799, tag: true },
-    { day: '05', name: 'Rent', amt: 12000, tag: true },
-    { day: '06', name: 'Monthly SIP', amt: 10000, tag: true },
+    { day: '03', name: 'Broadband', amt: 200, tag: true },
+    { day: '05', name: 'Rent', amt: 1000, tag: true },
+    { day: '06', name: 'Monthly SIP', amt: 500, tag: true },
   ];
   return (
     <figure className="demo-card">

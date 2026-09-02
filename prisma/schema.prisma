@@ -1,0 +1,122 @@
+// Prisma schema — Postgres, multi-user expense tracker
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Runtime traffic goes through Neon's PgBouncer endpoint (the -pooler host).
+  url      = env("DATABASE_URL")
+  // Migrations need a direct connection: PgBouncer's transaction pooling
+  // cannot run DDL or advisory locks. Falls back to DATABASE_URL if unset.
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  // Null for accounts created via Google or email-OTP — they never set one.
+  passwordHash  String?
+  image         String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  entries   Entry[]
+  budgets   Budget[]
+  recurring RecurringRule[]
+}
+
+/// One-time codes for email verification / passwordless sign-in.
+/// Only the bcrypt hash is stored, so a DB leak does not hand over live codes.
+model LoginCode {
+  id         String    @id @default(cuid())
+  email      String
+  codeHash   String
+  purpose    String // "login" | "signup"
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([email, purpose])
+  @@index([expiresAt])
+}
+
+enum EntryType {
+  expense
+  deposit
+}
+
+model Entry {
+  id        String    @id @default(cuid())
+  userId    String
+  date      DateTime  @db.Date
+  type      EntryType
+  // Category id string (e.g. "travel", "food"). Nullable for deposits.
+  // We keep categories as a code-side constant, not a DB table, because the
+  // set is fixed and small. If it grows, promote to its own model.
+  category  String?
+  amount    Decimal   @db.Decimal(14, 2)
+  note      String    @default("")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  /// Set when this row was materialised from a RecurringRule, so the generator
+  /// can tell "already created for this month" from "user deleted it on purpose".
+  recurringRuleId String?
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recurringRule RecurringRule? @relation(fields: [recurringRuleId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+  @@index([userId, type])
+  @@index([userId, recurringRuleId])
+}
+
+/// A monthly spending cap for one category. One row per user+category.
+model Budget {
+  id        String   @id @default(cuid())
+  userId    String
+  category  String
+  /// Monthly cap in rupees. Always > 0; delete the row to remove a budget.
+  amount    Decimal  @db.Decimal(14, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category])
+}
+
+/// A template that materialises into an Entry once per month.
+/// Nothing runs on a timer: the entries API generates any missing months for
+/// active rules when a month is first requested. See lib/recurring.ts.
+model RecurringRule {
+  id           String    @id @default(cuid())
+  userId       String
+  type         EntryType
+  category     String?
+  amount       Decimal   @db.Decimal(14, 2)
+  note         String    @default("")
+  /// 1-31. Clamped to the real length of each month (31 -> 30 in April).
+  dayOfMonth   Int
+  /// "YYYY-MM" — first month this rule applies to.
+  startMonth   String
+  /// "YYYY-MM" or null for open-ended.
+  endMonth     String?
+  /// Last month this rule was materialised for. The generator only ever moves
+  /// forward from here, so an entry the user deletes on purpose stays deleted
+  /// instead of reappearing the next time the month is opened.
+  lastRunMonth String?
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries Entry[]
+
+  @@index([userId, active])
+}

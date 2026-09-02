@@ -37,9 +37,9 @@ export default async function Home() {
         {/* A miniature of the real dashboard, drawn from the same design tokens. */}
         <div className="preview-card">
           <div className="preview-tiles">
-            <div className="preview-tile"><span>Deposits</span><strong className="pos">₹2,62,639</strong></div>
-            <div className="preview-tile"><span>Spends</span><strong className="neg">₹1,93,155</strong></div>
-            <div className="preview-tile"><span>Net</span><strong className="pos">₹69,483</strong></div>
+            <div className="preview-tile"><span>Deposits</span><strong className="pos">₹20,000</strong></div>
+            <div className="preview-tile"><span>Spends</span><strong className="neg">₹10,000</strong></div>
+            <div className="preview-tile"><span>Net</span><strong className="pos">₹10000</strong></div>
           </div>
           <div className="preview-bars">
             {[38, 62, 45, 80, 55, 92, 48, 70, 35, 88, 60, 74].map((h, i) => (
@@ -51,7 +51,7 @@ export default async function Home() {
             <span className="bar-track" style={{ height: 6 }}>
               <span className="bar-fill bud-warn" style={{ width: '84%', display: 'block', height: '100%' }} />
             </span>
-            <span className="preview-budget-pct">84% of ₹8,000</span>
+            <span className="preview-budget-pct">40% of ₹10000</span>
           </div>
         </div>
       </section>
